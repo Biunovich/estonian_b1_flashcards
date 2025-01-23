@@ -22,7 +22,7 @@ jobs:
         run: npm install
 
       - name: Build the project
-        run: npm run build -- --base=/${{ github.repository.name }}/
+        run: npm run build -- --base=/${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/}/
 
       - name: Configure Git
         run: |
