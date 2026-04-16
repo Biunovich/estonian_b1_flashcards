@@ -1,36 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import { createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 import Flashcard from './components/Flashcard';
-import combinedWords from './data/words_combined.json';
+import wordsUrl from './data/words_combined.json?url';
 import './App.css';
 
-const words = Object.entries(combinedWords).map(([word, details]) => ({
-  word,
-  ...details,
-}));
-
 function App() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [direction, setDirection] = useState('right');
-  const [language, setLanguage] = useState('est');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [words, setWords] = createSignal([]);
+  const [loading, setLoading] = createSignal(true);
+  const [error, setError] = createSignal('');
+  const [currentIndex, setCurrentIndex] = createSignal(0);
+  const [isFlipped, setIsFlipped] = createSignal(false);
+  const [direction, setDirection] = createSignal('right');
+  const [language, setLanguage] = createSignal('est');
+  const [isDropdownOpen, setIsDropdownOpen] = createSignal(false);
+
+  const currentWord = createMemo(() => words()[currentIndex()]);
 
   const handleNext = () => {
+    const items = words();
+    if (!items.length) {
+      return;
+    }
     setDirection('right');
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % words.length);
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % items.length);
     setIsFlipped(false);
   };
 
   const handlePrevious = () => {
+    const items = words();
+    if (!items.length) {
+      return;
+    }
     setDirection('left');
-    setCurrentIndex((prevIndex) => 
-      prevIndex === 0 ? words.length - 1 : prevIndex - 1
-    );
+    setCurrentIndex((prevIndex) => (prevIndex === 0 ? items.length - 1 : prevIndex - 1));
     setIsFlipped(false);
   };
 
   const handleFlip = () => {
-    setIsFlipped(prev => !prev);
+    setIsFlipped((prev) => !prev);
   };
 
   const handleLanguageChange = (newLanguage) => {
@@ -40,7 +46,7 @@ function App() {
     setIsDropdownOpen(false);
   };
 
-  useEffect(() => {
+  onMount(() => {
     const handleKeyPress = (event) => {
       if (event.key === 'ArrowRight') {
         handleNext();
@@ -53,34 +59,52 @@ function App() {
     };
 
     window.addEventListener('keydown', handleKeyPress);
-
-    // Cleanup listener on component unmount
-    return () => {
+    onCleanup(() => {
       window.removeEventListener('keydown', handleKeyPress);
-    };
-  }, []); // Empty dependency array since handlers are stable
+    });
+  });
+
+  onMount(async () => {
+    try {
+      const response = await fetch(wordsUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to load words: ${response.status}`);
+      }
+      const data = await response.json();
+      setWords(
+        Object.entries(data).map(([word, details]) => ({
+          word,
+          ...details,
+        })),
+      );
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load words.');
+    } finally {
+      setLoading(false);
+    }
+  });
 
   return (
-    <div className="app">
-      <div className="header">
+    <div class="app">
+      <div class="header">
         <h1>Estonian B1 Exam Flashcards</h1>
-        <div className="language-dropdown">
-          <button 
-            className="dropdown-button"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+        <div class="language-dropdown">
+          <button
+            class="dropdown-button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen())}
           >
-            {language === 'est' ? 'Русский' : 'English'} ▼
+            {language() === 'est' ? 'Русский' : 'English'} ▼
           </button>
-          {isDropdownOpen && (
-            <div className="dropdown-content">
-              <button 
-                className={language === 'est' ? 'active' : ''}
+          {isDropdownOpen() && (
+            <div class="dropdown-content">
+              <button
+                classList={{ active: language() === 'est' }}
                 onClick={() => handleLanguageChange('est')}
               >
                 Русский
               </button>
-              <button 
-                className={language === 'eng' ? 'active' : ''}
+              <button
+                classList={{ active: language() === 'eng' }}
                 onClick={() => handleLanguageChange('eng')}
               >
                 English
@@ -89,41 +113,48 @@ function App() {
           )}
         </div>
       </div>
-      <div className="flashcard-section">
-        <Flashcard 
-          key={`${currentIndex}-${language}`}
-          word={words[currentIndex].word}
-          secondForm={words[currentIndex].secondForm}
-          thirdForm={words[currentIndex].thirdForm}
-          translation={
-            language === 'est'
-              ? words[currentIndex].ruTranslation
-              : words[currentIndex].enTranslation
-          }
-          isFlipped={isFlipped}
-          onFlip={handleFlip}
-          direction={direction}
-        />
-        <div className="navigation-buttons">
-          <button 
-            onClick={handlePrevious} 
-            className="arrow-button"
-            title="Previous (←)"
-          >
-            ←
-          </button>
-          <button 
-            onClick={handleNext} 
-            className="arrow-button"
-            title="Next (→)"
-          >
-            →
-          </button>
+
+      {loading() && <p class="status-message">Loading words...</p>}
+      {error() && <p class="status-message error-message">{error()}</p>}
+
+      {!loading() && !error() && currentWord() && (
+        <div class="flashcard-section">
+          <Flashcard
+            key={`${currentIndex()}-${language()}`}
+            word={currentWord().word}
+            secondForm={currentWord().secondForm}
+            thirdForm={currentWord().thirdForm}
+            translation={
+              language() === 'est'
+                ? currentWord().ruTranslation
+                : currentWord().enTranslation
+            }
+            isFlipped={isFlipped()}
+            onFlip={handleFlip}
+            direction={direction()}
+          />
+          <div class="navigation-buttons">
+            <button
+              onClick={handlePrevious}
+              class="arrow-button"
+              title="Previous (←)"
+            >
+              ←
+            </button>
+            <button
+              onClick={handleNext}
+              class="arrow-button"
+              title="Next (→)"
+            >
+              →
+            </button>
+          </div>
         </div>
-      </div>
-      <footer className="legend">
+      )}
+
+      <footer class="legend">
         <h2>Word Types:</h2>
-        <div className="legend-grid">
+        <div class="legend-grid">
           <div><strong>A</strong> – omadussõna</div>
           <div><strong>D</strong> – määrsõna</div>
           <div><strong>G</strong> – käändumatu omadussõna</div>
@@ -142,4 +173,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

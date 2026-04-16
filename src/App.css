@@ -73,6 +73,15 @@ h1 {
   margin-right: 5px;
 }
 
+.status-message {
+  color: #333;
+  margin: 60px 0;
+}
+
+.error-message {
+  color: #b91c1c;
+}
+
 .header {
   display: flex;
   justify-content: center;
