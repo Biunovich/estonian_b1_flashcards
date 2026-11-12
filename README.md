@@ -61,3 +61,39 @@ Feel free to submit issues and enhancement requests.
 ## Acknowledgments
 
 - Dictionary links provided by [Sonaveeb](https://sonaveeb.ee)
+
+## Pronunciation audio
+
+The Listen button plays the Estonian word and every available form in a single
+recording. Repeated forms are spoken again. Recordings live in `public/audio/`
+and are copied into the GitHub Pages build by Vite. They load only when Listen is
+pressed; the manifest loads before Listen is enabled, and changing words stops playback. Translation-to-Estonian quizzes show
+Listen after the answer has been selected.
+
+`public/audio/manifest.json` maps the exact dictionary keys to MP3 filenames and
+records the spoken forms and synthesis settings. Filenames include a hash of the
+entry, its forms, and its settings, so changed recordings get new URLs.
+
+To regenerate or resume missing files through llm-gateway:
+
+```sh
+export LLM_GATEWAY_TOKEN_FILE=/path/to/private/client-token
+# Optional: export LLM_GATEWAY_URL=http://gateway-host:8080
+python3 scripts/generate-audio.py --workers 3
+```
+
+The gateway URL defaults to the running `llm-gateway-caddy-1` container on the
+`llm_clients` network. Credentials stay on the generation host; none are included
+in the app or Git. The gateway must have Azure Neural TTS configured.
+
+After successful generation, the manifest is replaced atomically and obsolete
+generated MP3s are removed. Failed runs preserve the previous manifest and recordings.
+After a recording exhausts its retries, no more words are scheduled; at most the
+other in-flight recordings finish before exit. Existing files with matching settings
+are reused on resume.
+
+The generator runs three concurrent synthesis requests and uses FFmpeg from
+`immich_server` for encoding. No TTS service is needed by the deployed app.
+Configuration: Azure Neural, `et-EE-AnuNeural`, speed 1.0, model pauses between forms
+separated by full stops, mono 22,050 Hz, 64 kbps MP3. No cleanup, audio filters,
+local speed adjustment or added silence.

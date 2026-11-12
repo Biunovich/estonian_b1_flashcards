@@ -1,0 +1,36 @@
+.word-audio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.audio-button {
+  padding: 9px 18px;
+  border: 1px solid #4caf50;
+  border-radius: 6px;
+  background: white;
+  color: #287d2c;
+  font: inherit;
+  cursor: pointer;
+}
+
+.audio-button:hover {
+  background: #eef8ee;
+}
+
+.audio-button:focus-visible {
+  outline: 3px solid #287d2c;
+  outline-offset: 3px;
+}
+
+.audio-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.audio-error {
+  color: #b42318;
+  font-size: 14px;
+}

@@ -1,5 +1,6 @@
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 import Flashcard from './components/Flashcard';
+import AudioButton from './components/AudioButton';
 import wordsUrl from './data/words_combined.json?url';
 import './App.css';
 
@@ -166,6 +167,8 @@ function App() {
 
   onMount(() => {
     const handleKeyPress = (event) => {
+      if (event.target.closest?.('input, select, textarea, [contenteditable="true"]')) return;
+      if (event.key === ' ' && event.target.closest?.('button, a')) return;
       if (event.key === 'ArrowRight') {
         handleNext();
       } else if (event.key === 'ArrowLeft') {
@@ -270,70 +273,75 @@ function App() {
         <div class="flashcard-section">
           <Show when={currentWord()} keyed>
             {(word) => (
-              <Show
-                when={studyMode() !== 'flashcards'}
-                fallback={(
-                  <Flashcard
-                    word={word.word}
-                    secondForm={word.secondForm}
-                    thirdForm={word.thirdForm}
-                    translation={getTranslation(word)}
-                    isFlipped={isFlipped()}
-                    onFlip={handleFlip}
-                    onNext={handleNext}
-                    onPrevious={handlePrevious}
-                    direction={direction()}
-                  />
-                )}
-              >
-                <div class="quiz-card" classList={{ answered: selectedAnswerId() !== null }}>
-                  <div class="quiz-prompt-label">
-                    Pick the correct {studyMode() === 'est-to-translation' ? 'translation' : 'Estonian word'}
-                  </div>
-                  <div class="quiz-prompt">
-                    <Show
-                      when={studyMode() === 'est-to-translation'}
-                      fallback={<div class="main-word">{getTranslation(word)}</div>}
-                    >
-                      <div class="main-word">{getWordDetails(word.word).mainWord}</div>
-                      {[word.secondForm, word.thirdForm].filter(Boolean).join(' · ') && (
-                        <div class="word-forms">{[word.secondForm, word.thirdForm].filter(Boolean).join(' · ')}</div>
-                      )}
-                      <div class="word-type">{getWordDetails(word.word).type}</div>
+              <>
+                <Show
+                  when={studyMode() !== 'flashcards'}
+                  fallback={(
+                    <Flashcard
+                      word={word.word}
+                      secondForm={word.secondForm}
+                      thirdForm={word.thirdForm}
+                      translation={getTranslation(word)}
+                      isFlipped={isFlipped()}
+                      onFlip={handleFlip}
+                      onNext={handleNext}
+                      onPrevious={handlePrevious}
+                      direction={direction()}
+                    />
+                  )}
+                >
+                  <div class="quiz-card" classList={{ answered: selectedAnswerId() !== null }}>
+                    <div class="quiz-prompt-label">
+                      Pick the correct {studyMode() === 'est-to-translation' ? 'translation' : 'Estonian word'}
+                    </div>
+                    <div class="quiz-prompt">
+                      <Show
+                        when={studyMode() === 'est-to-translation'}
+                        fallback={<div class="main-word">{getTranslation(word)}</div>}
+                      >
+                        <div class="main-word">{getWordDetails(word.word).mainWord}</div>
+                        {[word.secondForm, word.thirdForm].filter(Boolean).join(' · ') && (
+                          <div class="word-forms">{[word.secondForm, word.thirdForm].filter(Boolean).join(' · ')}</div>
+                        )}
+                        <div class="word-type">{getWordDetails(word.word).type}</div>
+                      </Show>
+                    </div>
+                    <div class="quiz-options">
+                      <For each={quizOptions()}>
+                        {(option, index) => {
+                          const isCorrect = option.id === word.id;
+                          const isSelected = selectedAnswerId() === option.id;
+                          return (
+                            <button
+                              class="quiz-option"
+                              classList={{
+                                correct: selectedAnswerId() !== null && isCorrect,
+                                incorrect: selectedAnswerId() !== null && isSelected && !isCorrect,
+                              }}
+                              disabled={selectedAnswerId() !== null}
+                              onClick={() => handleAnswerSelect(option.id)}
+                            >
+                              <span class="quiz-option-index">{index() + 1}</span>
+                              <span>{option.label}</span>
+                            </button>
+                          );
+                        }}
+                      </For>
+                    </div>
+                    <Show when={selectedAnswerId() !== null}>
+                      <div
+                        class="quiz-result"
+                        classList={{ success: selectedAnswerId() === word.id, error: selectedAnswerId() !== word.id }}
+                      >
+                        {selectedAnswerId() === word.id ? 'Correct' : 'Not quite'}
+                      </div>
                     </Show>
                   </div>
-                  <div class="quiz-options">
-                    <For each={quizOptions()}>
-                      {(option, index) => {
-                        const isCorrect = option.id === word.id;
-                        const isSelected = selectedAnswerId() === option.id;
-                        return (
-                          <button
-                            class="quiz-option"
-                            classList={{
-                              correct: selectedAnswerId() !== null && isCorrect,
-                              incorrect: selectedAnswerId() !== null && isSelected && !isCorrect,
-                            }}
-                            disabled={selectedAnswerId() !== null}
-                            onClick={() => handleAnswerSelect(option.id)}
-                          >
-                            <span class="quiz-option-index">{index() + 1}</span>
-                            <span>{option.label}</span>
-                          </button>
-                        );
-                      }}
-                    </For>
-                  </div>
-                  <Show when={selectedAnswerId() !== null}>
-                    <div
-                      class="quiz-result"
-                      classList={{ success: selectedAnswerId() === word.id, error: selectedAnswerId() !== word.id }}
-                    >
-                      {selectedAnswerId() === word.id ? 'Correct' : 'Not quite'}
-                    </div>
-                  </Show>
-                </div>
-              </Show>
+                </Show>
+                <Show when={studyMode() !== 'translation-to-est' || selectedAnswerId() !== null}>
+                  <AudioButton word={word.word} />
+                </Show>
+              </>
             )}
           </Show>
           <div class="navigation-buttons">
